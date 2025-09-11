@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2 text-center">
+            <h1 class="display-4 mb-4">Emoji Movie Quiz</h1>
+            
+            {% if error %}
+            <div class="alert alert-danger">
+                {{ error }}
+            </div>
+            {% else %}
+                {% if previous_answer %}
+                <div class="alert {% if is_correct == True %}alert-success{% elif is_correct == False %}alert-danger{% else %}alert-info{% endif %} mb-4">
+                    {% if is_correct == True %}
+                        <h4>🎉 Correct!</h4>
+                        <p>You got it right!</p>
+                    {% elif is_correct == False %}
+                        <h4>❌ Wrong!</h4>
+                        <p>Your answer: "{{ user_answer }}"</p>
+                        <p>Correct answer: "{{ previous_answer }}"</p>
+                    {% else %}
+                        <h4>🤔 The answer is:</h4>
+                        <p>"{{ previous_answer }}"</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h2 class="display-1 mb-4">{{ movie.emoji_representation }}</h2>
+                        {% if show_next %}
+                            <form method="post">
+                                {% csrf_token %}
+                                <button type="submit" name="next" class="btn btn-primary btn-lg">Next Question</button>
+                            </form>
+                        {% elif not previous_answer %}
+                            {% if difficulty == 'easy' %}
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="movie_id" value="{{ movie.id }}">
+                                    <div class="row justify-content-center mb-3">
+                                        {% for choice in choices %}
+                                            <div class="col-md-4 mb-2">
+                                                <button type="submit" name="answer" value="{{ choice }}" class="btn btn-primary w-100">{{ choice }}</button>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </form>
+                            {% else %}
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="movie_id" value="{{ movie.id }}">
+                                    <div class="mb-3">
+                                        <input type="text" name="answer" class="form-control form-control-lg" 
+                                               placeholder="Enter movie title..." autofocus>
+                                    </div>
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <button type="submit" class="btn btn-primary btn-lg">Submit Answer</button>
+                                        <button type="submit" name="dont_know" class="btn btn-secondary btn-lg">I don't know</button>
+                                    </div>
+                                </form>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <a href="{% url 'index' %}" class="btn btn-outline-secondary">Back to Home</a>
+        </div>
+    </div>
+</div>
+{% endblock %} 

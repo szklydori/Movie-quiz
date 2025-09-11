@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Challenge Mode</h3>
+                </div>
+                <div class="card-body">
+                    <div id="challenge-root"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let timeLeft = 60;
+let score = 0;
+let timerInterval = null;
+let correctAnswer = null;
+let challengeActive = true;
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+function renderQuestion(data) {
+    console.log('renderQuestion data:', data);
+    if (!data.question || data.time_left <= 0) {
+        renderEndScreen(data.score);
+        return;
+    }
+    challengeActive = true;
+    correctAnswer = data.correct_answer;
+    score = data.score;
+    timeLeft = data.time_left;
+    const root = document.getElementById('challenge-root');
+    root.innerHTML = `
+        <div class="text-center mb-4">
+            <h4>Time Remaining: <span id="timer">${timeLeft}</span> seconds</h4>
+            <h4>Score: <span id="score">${score}</span></h4>
+        </div>
+        <div class="question-container">
+            <div class="d-flex justify-content-center mb-3">
+                <img src="${data.question}" alt="Movie Image" class="img-fluid" style="max-height:300px;">
+            </div>
+            <form id="answer-form" autocomplete="off">
+                <div class="choices-container">
+                    ${data.choices.map((choice, idx) => `
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="selected_choice" id="choice${idx}" value="${choice}">
+                            <label class="form-check-label" for="choice${idx}">${choice}</label>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-primary" id="submit-btn">Submit Answer</button>
+                </div>
+            </form>
+            <div id="feedback" class="text-center mt-3" style="display:none;"></div>
+        </div>
+    `;
+    document.getElementById('answer-form').onsubmit = handleAnswerSubmit;
+}
+
+function renderEndScreen(finalScore) {
+    challengeActive = false;
+    clearInterval(timerInterval);
+    fetch('/challenge/finish/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ score: finalScore })
+    });
+    const root = document.getElementById('challenge-root');
+    root.innerHTML = `
+        <div class="text-center" id="end-screen">
+            <h4>Challenge Complete!</h4>
+            <p>Your final score: <span id="final-score">${finalScore}</span></p>
+            <a href="/challenge/" class="btn btn-success me-2">Play Again</a>
+            <a href="/" class="btn btn-secondary">Back Home</a>
+        </div>
+    `;
+}
+
+function handleAnswerSubmit(e) {
+    e.preventDefault();
+    const selected = document.querySelector('input[name="selected_choice"]:checked');
+    if (!selected) return;
+    const selectedLabel = selected.parentElement;
+    const feedback = document.getElementById('feedback');
+    const isCorrect = selected.value.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+    if (isCorrect) {
+        selectedLabel.classList.add('bg-success', 'text-white');
+        feedback.textContent = 'Correct!';
+    } else {
+        selectedLabel.classList.add('bg-danger', 'text-white');
+        feedback.textContent = 'Wrong!';
+    }
+    feedback.style.display = 'block';
+    document.getElementById('submit-btn').disabled = true;
+    setTimeout(() => {
+        postAndFetchNextQuestion(isCorrect);
+    }, 700);
+}
+
+function postAndFetchNextQuestion(isCorrect) {
+    fetch('/challenge/question/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({ is_correct: isCorrect })
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        console.log('POST response:', data);
+        renderQuestion(data);
+    });
+}
+
+function fetchNextQuestion() {
+    fetch('/challenge/question/')
+        .then(resp => resp.json())
+        .then(data => {
+            renderQuestion(data);
+        });
+}
+
+function updateTimer() {
+    if (!challengeActive) return;
+    timeLeft--;
+    if (timeLeft <= 0) {
+        renderEndScreen(score);
+        return;
+    }
+    const timerElement = document.getElementById('timer');
+    if (timerElement) timerElement.textContent = timeLeft;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetchNextQuestion();
+    timerInterval = setInterval(updateTimer, 1000);
+});
+</script>
+{% endblock %} 

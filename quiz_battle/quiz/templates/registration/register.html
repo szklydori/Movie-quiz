@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="register-container">
+  <h1 class="register-title">Sign up</h1>
+  <form method="post" class="register-form">
+    {% csrf_token %}
+    <div class="form-group">{{ form.username.label_tag }}{{ form.username }}</div>
+    <div class="form-group">{{ form.email.label_tag }}{{ form.email }}</div>
+    <div class="form-group">{{ form.password1.label_tag }}{{ form.password1 }}</div>
+    <div class="form-group">{{ form.password2.label_tag }}{{ form.password2 }}</div>
+    {% if form.password1.help_text %}
+      <div class="help-text">{{ form.password1.help_text|safe }}</div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary btn-block">Sign up</button>
+  </form>
+  <div class="register-links">
+    <p>Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
+    <a href="{% url 'index' %}" class="btn btn-secondary">Back Home</a>
+  </div>
+</div>
+<style>
+body {
+  background: #f6f7fb;
+}
+.register-container {
+  max-width: 400px;
+  margin: 48px auto;
+  padding: 2.5rem 2rem 2rem 2rem;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  text-align: center;
+}
+.register-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #222;
+}
+.register-form {
+  margin-bottom: 1.5rem;
+}
+.form-group {
+  margin-bottom: 1.2rem;
+  text-align: left;
+}
+.form-group label {
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+  display: block;
+}
+.form-group input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  margin-top: 0.2rem;
+  background: #f9fafb;
+  transition: border 0.2s;
+}
+.form-group input:focus {
+  border: 1.5px solid #4f8cff;
+  outline: none;
+}
+.help-text {
+  color: #888;
+  font-size: 0.95rem;
+  margin-bottom: 1.2rem;
+  text-align: left;
+}
+.btn-block {
+  width: 100%;
+  padding: 0.7rem 0;
+  font-size: 1.1rem;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+}
+.btn-primary {
+  background: #4f8cff;
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.btn-primary:hover {
+  background: #2563eb;
+}
+.btn-secondary {
+  margin-top: 0.7rem;
+  display: inline-block;
+  background: #e5e7eb;
+  color: #222;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.btn-secondary:hover {
+  background: #cbd5e1;
+}
+.register-links {
+  margin-top: 1.5rem;
+}
+@media (max-width: 500px) {
+  .register-container {
+    padding: 1.2rem 0.5rem 1.5rem 0.5rem;
+  }
+  .register-title {
+    font-size: 1.5rem;
+  }
+}
+</style>
+{% endblock %}

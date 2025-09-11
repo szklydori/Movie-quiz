@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2 text-center">
+            <h1 class="display-4 mb-4">Movie Image Quiz</h1>
+            
+            {% if feedback %}
+            <div class="alert {% if is_correct == True %}alert-success{% elif is_correct == False %}alert-danger{% else %}alert-info{% endif %} mb-4">
+                {% if is_correct %}
+                    <h4>🎉 Correct!</h4>
+                    <p>{{ feedback }}</p>
+                {% elif is_correct is not None %}
+                    <h4>❌ Wrong!</h4>
+                    <p>{{ feedback }}</p>
+                {% else %}
+                    <h4>🤔 The answer is:</h4>
+                    <p>{{ feedback }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    {% if image_url %}
+                        <img src="{{ image_url }}" alt="Filmjelenet" class="img-fluid rounded mb-4" style="max-height:350px;">
+                    {% else %}
+                        <p class="text-muted">There is no image available for this movie.</p>
+                    {% endif %}
+
+                    {% if not feedback %}
+                        {% if difficulty == 'hard' %}
+                            <form method="post" id="quiz-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="correct_title" value="{{ correct_title }}">
+                                <input type="hidden" name="choices_json" value='{{ choices_json|escapejs }}'>
+                                <div class="mb-3">
+                                    <input type="text" name="movie_title" class="form-control" placeholder="Type your answer here..." autocomplete="off">
+                                </div>
+                                <div class="d-flex justify-content-center gap-2">
+                                    <button type="submit" class="btn btn-primary">Submit</button>
+                                    <button type="submit" name="dont_know" value="1" class="btn btn-secondary">Don't know</button>
+                                </div>
+                            </form>
+                        {% else %}
+                            <form method="post" id="quiz-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="correct_title" value="{{ correct_title }}">
+                                <input type="hidden" name="choices_json" value='{{ choices_json|escapejs }}'>
+                                <div class="row justify-content-center mb-3">
+                                    {% for choice in choices %}
+                                        <div class="col-md-4 mb-2">
+                                            {% if selected_choice %}
+                                                {% if choice == correct_title %}
+                                                    <button type="button" class="btn btn-success w-100">{{ choice }}</button>
+                                                {% elif choice == selected_choice and not is_correct %}
+                                                    <button type="button" class="btn btn-danger w-100">{{ choice }}</button>
+                                                {% else %}
+                                                    <button type="button" class="btn btn-outline-secondary w-100">{{ choice }}</button>
+                                                {% endif %}
+                                            {% else %}
+                                                <button type="submit" name="movie_title" value="{{ choice }}" class="btn btn-primary w-100">{{ choice }}</button>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if feedback %}
+                        <form method="get">
+                            <input type="hidden" name="difficulty" value="{{ difficulty }}">
+                            <button type="submit" class="btn btn-primary mt-2">Next</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <a href="{% url 'index' %}" class="btn btn-outline-secondary">Back home</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

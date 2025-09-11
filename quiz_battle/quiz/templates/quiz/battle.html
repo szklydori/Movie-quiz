@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Battle Rooms</h2>
+    
+    <!-- Új szoba létrehozása -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Create New Room</h5>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+                <div class="input-group">
+                    <input type="text" name="room_name" class="form-control" placeholder="Enter room name" required>
+                    <button type="submit" class="btn btn-primary">Create Room</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Aktív szobák -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Available Rooms</h5>
+            {% if active_rooms %}
+                <div class="list-group">
+                    {% for room_name, players in active_rooms.items %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-0">{{ room_name }}</h6>
+                                    <small>Players: {{ players|length }}/2</small>
+                                </div>
+                                {% if username not in players %}
+                                    <form method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="join">
+                                        <input type="hidden" name="room_name" value="{{ room_name }}">
+                                        <button type="submit" class="btn btn-success">Join</button>
+                                    </form>
+                                {% else %}
+                                    <a href="{% url 'battle_room' room_name=room_name %}" class="btn btn-primary">Enter Room</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>No available rooms. Create one!</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

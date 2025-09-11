@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="login-container">
+  <h2>Sign in</h2>
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-success">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+  <form method="post" class="login-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Sign in</button>
+  </form>
+  <div class="login-links">
+    <p>Don't have an account? <a href="{% url 'register' %}">Sign up</a></p>
+    <a href="{% url 'index' %}" class="btn btn-secondary">Back Home</a>
+  </div>
+</div>
+<style>
+.login-container {
+  max-width: 400px;
+  margin: 40px auto;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  text-align: center;
+}
+.login-form button {
+  width: 100%;
+  margin-top: 1rem;
+}
+.login-links {
+  margin-top: 1.5rem;
+}
+.btn-secondary {
+  margin-top: 0.5rem;
+  display: inline-block;
+}
+</style>
+{% endblock %}

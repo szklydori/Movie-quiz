@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Battle Room: {{ room_name }}</h2>
+    <div id="battle-status" class="alert alert-info">Waiting for opponent...</div>
+    <div class="row mb-4">
+        <div class="col-md-8 offset-md-2 text-center">
+            <img id="movie-image" src="{{ image_url }}" alt="Filmjelenet" class="img-fluid rounded mb-4" style="max-height:350px;">
+            {% if game_finished %}
+                <div class="alert alert-dark mt-3">
+                    {% if is_draw %}
+                        <strong>Draw!</strong> Both players scored {{ winner_score }} points.
+                    {% else %}
+                        <strong>Winner: {{ winner }}</strong> with {{ winner_score }} points!
+                    {% endif %}
+                </div>
+                <div class="d-flex justify-content-center gap-3 mt-3">
+                    <a href="{% url 'index' %}" class="btn btn-primary">Back to Home</a>
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" name="start_over" value="1" class="btn btn-success">Start Over</button>
+                    </form>
+                </div>
+            {% else %}
+                {% if not has_answered %}
+                <form method="post" class="mb-3">
+                    {% csrf_token %}
+                    <div class="input-group input-group-lg mb-2" id="answer-input-group">
+                        <input type="text" name="answer" class="form-control" placeholder="Type the movie title..." autocomplete="off" required>
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                    </div>
+                </form>
+                {% endif %}
+                {% if show_feedback %}
+                    {% if is_correct %}
+                        <div class="alert alert-success mt-2">Correct!</div>
+                    {% else %}
+                        <div class="alert alert-danger mt-2">Wrong! The correct answer was: {{ correct_title }}</div>
+                    {% endif %}
+                {% endif %}
+                {% if all_answered and has_answered %}
+                <form method="post" class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" name="next_question" value="1" class="btn btn-success">Next question</button>
+                </form>
+                {% endif %}
+                <form method="post" class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" name="finish" value="1" class="btn btn-danger">Finish</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Your Score</h5>
+                    <p class="card-text" id="your-score">{{ your_score }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Opponent's Score</h5>
+                    <p class="card-text" id="opponent-score">{{ opponent_score }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="battle-messages" class="mt-4"></div>
+</div>
+
+{% if has_answered and not all_answered and not game_finished %}
+<script>
+setInterval(function() {
+    fetch(window.location.href, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            if (doc.querySelector('form button[name="next_question"]') || doc.querySelector('.alert-dark')) {
+                window.location.reload();
+            }
+        });
+}, 2000);
+</script>
+{% endif %}
+
+<script>
+    const roomName = "{{ room_name }}";
+    const username = "{{ username }}";
+    let correctTitle = "{{ correct_title|escapejs }}";
+    let hasAnswered = false;
+    let yourScore = 0;
+    let opponentScore = 0;
+    let finished = false;
+    let waitingForOthers = false;
+
+    const battleSocket = new WebSocket(
+        'ws://' + window.location.host + '/ws/battle/' + roomName + '/'
+    );
+
+    function setWaiting(waiting) {
+        waitingForOthers = waiting;
+        const statusDiv = document.getElementById('battle-status');
+        if (waiting) {
+            statusDiv.className = 'alert alert-warning';
+            statusDiv.textContent = 'Waiting for others...';
+        } else {
+            statusDiv.className = 'alert alert-info';
+            statusDiv.textContent = '';
+        }
+    }
+
+    battleSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        const messagesDiv = document.querySelector('#battle-messages');
+        if (data.type === 'join') {
+            const message = document.createElement('div');
+            message.className = 'alert alert-info';
+            message.textContent = data.user + ' joined the battle!';
+            messagesDiv.appendChild(message);
+        } else if (data.type === 'answer') {
+            const message = document.createElement('div');
+            message.className = 'alert ' + (data.is_correct ? 'alert-success' : 'alert-danger');
+            message.textContent = data.user + ': ' + (data.is_correct ? 'Correct!' : 'Wrong!') + (data.answer ? ' (' + data.answer + ')' : '');
+            messagesDiv.appendChild(message);
+            if (data.scores) {
+                document.querySelector('#your-score').textContent = data.scores[username] || 0;
+                let opponent = Object.keys(data.scores).find(u => u !== username);
+                if (opponent) {
+                    document.querySelector('#opponent-score').textContent = data.scores[opponent];
+                }
+            }
+            if (data.user === username) {
+                document.getElementById('answer-feedback').innerHTML = data.is_correct ? '<span class="text-success">Correct!</span>' : '<span class="text-danger">Wrong!</span>';
+                hasAnswered = true;
+                document.getElementById('answer-input-group').style.display = 'none';
+                setWaiting(true);
+            }
+        } else if (data.type === 'question') {
+            // Új kérdés jött
+            document.getElementById('movie-image').src = data.image_url;
+            correctTitle = data.correct_title;
+            document.getElementById('answer-input').value = '';
+            document.getElementById('answer-input').disabled = false;
+            document.getElementById('answer-input-group').style.display = '';
+            document.getElementById('answer-feedback').innerHTML = '';
+            hasAnswered = false;
+            setWaiting(false);
+        } else if (data.type === 'finish') {
+            finished = true;
+            document.getElementById('answer-input').disabled = true;
+            document.getElementById('finish-btn').disabled = true;
+            setWaiting(false);
+            let winnerMsg = 'Winner: ' + data.winner + ' (' + data.winner_score + ' points)';
+            let scoresMsg = 'Scores: ' + Object.entries(data.scores).map(([u, s]) => u + ': ' + s).join(', ');
+            document.getElementById('battle-status').className = 'alert alert-success';
+            document.getElementById('battle-status').textContent = winnerMsg + ' | ' + scoresMsg;
+        }
+    };
+
+    battleSocket.onopen = function(e) {
+        battleSocket.send(JSON.stringify({
+            'type': 'join',
+            'user': username
+        }));
+    };
+
+    document.getElementById('answer-form').onsubmit = function(e) {
+        e.preventDefault();
+        if (hasAnswered || finished) return;
+        const answer = document.getElementById('answer-input').value.trim();
+        if (!answer) return;
+        const isCorrect = answer.toLowerCase() === correctTitle.toLowerCase();
+        if (isCorrect) yourScore += 2;
+        battleSocket.send(JSON.stringify({
+            'type': 'answer',
+            'user': username,
+            'answer': answer,
+            'is_correct': isCorrect,
+            'score': yourScore
+        }));
+        document.querySelector('#your-score').textContent = yourScore;
+        document.getElementById('answer-feedback').innerHTML = isCorrect ? '<span class="text-success">Correct!</span>' : '<span class="text-danger">Wrong!</span>';
+        hasAnswered = true;
+        document.getElementById('answer-input-group').style.display = 'none';
+        setWaiting(true);
+    };
+
+    document.getElementById('finish-btn').onclick = function() {
+        if (finished) return;
+        battleSocket.send(JSON.stringify({
+            'type': 'finish',
+            'user': username
+        }));
+    };
+</script>
+{% endblock %} 
