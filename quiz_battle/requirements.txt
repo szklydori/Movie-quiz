@@ -8,4 +8,5 @@ pytest-django
 requests
 sqlparse
 tzdata
+gunicorn
 
